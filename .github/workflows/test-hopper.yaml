@@ -44,6 +44,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Pytest
+        shell: bash
+        run:
+          python3 -m pip install pytest
 
       - name: FlagGems reduction ops on hopper
         shell: bash
