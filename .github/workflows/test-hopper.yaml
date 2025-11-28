@@ -44,12 +44,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # - name: Activate Conda
-      #   shell: bash
-      #   run: |
-      #     CONDA_BASE_PATH="/home/zhangzhihui/miniconda3"
-      #     source "$CONDA_BASE_PATH/etc/profile.d/conda.sh"
-      #     conda activate flag_gems
+      - name: Install FlagGems
+        shell: bash
+        run: |
+          source tools/activate_flag_gems.sh
+          source tools/run_command.sh
+          run_command python -m pip install -e .
 
       - name: FlagGems reduction ops on hopper
         shell: bash
