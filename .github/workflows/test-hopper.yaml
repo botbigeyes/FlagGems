@@ -44,10 +44,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Pytest
+      - name: Activate Conda
         shell: bash
         run:
-          python3 -m pip install pytest
+          conda activate flag_gems
 
       - name: FlagGems reduction ops on hopper
         shell: bash
