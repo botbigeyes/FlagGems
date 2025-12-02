@@ -264,11 +264,14 @@ def index_put(inp, indices, values, accumulate=False):
         indices = list(torch.where(mask))
 
         K = indices[0].numel()
+        target_shape = (K,) + inp.shape[len(indices) :]
 
         if values.numel() == 1:
-            values = torch.full((K,), values.item(), dtype=inp.dtype, device=inp.device)
+            values = torch.full(
+                target_shape, values.item(), dtype=inp.dtype, device=inp.device
+            )
         elif values.numel() == K:
-            values = values.reshape((K,))
+            values = values.reshape((K,)).expand(target_shape)
 
     indices = [
         index.to(inp.device) if index.device != inp.device else index
@@ -299,11 +302,14 @@ def index_put_(inp, indices, values, accumulate=False):
         indices = list(torch.where(mask))
 
         K = indices[0].numel()
+        target_shape = (K,) + inp.shape[len(indices) :]
 
         if values.numel() == 1:
-            values = torch.full((K,), values.item(), dtype=inp.dtype, device=inp.device)
+            values = torch.full(
+                target_shape, values.item(), dtype=inp.dtype, device=inp.device
+            )
         elif values.numel() == K:
-            values = values.reshape((K,))
+            values = values.reshape((K,)).expand(target_shape)
 
     indices = [
         index.to(inp.device) if index.device != inp.device else index
