@@ -12,7 +12,7 @@ from flag_gems.ops import *  # noqa: F403
 from flag_gems.patches import *  # noqa: F403
 from flag_gems.runtime.register import Register
 
-__version__ = "3.0"
+__version__ = "4.1"
 device = runtime.device.name
 vendor_name = runtime.device.vendor_name
 aten_lib = torch.library.Library("aten", "IMPL")
@@ -37,6 +37,7 @@ def enable(
             ("_log_softmax_backward_data", log_softmax_backward),
             ("_softmax", softmax),
             ("_softmax_backward_data", softmax_backward),
+            ("_to_copy", to_copy),
             ("_unique2", _unique2),
             ("_upsample_bicubic2d_aa", _upsample_bicubic2d_aa),
             ("_weight_norm_interface", weight_norm_interface),
@@ -68,6 +69,7 @@ def enable(
             ("avg_pool2d_backward", avg_pool2d_backward),
             ("atan", atan),
             ("atan_", atan_),
+            ("baddbmm", baddbmm),
             ("bitwise_and.Scalar", bitwise_and_scalar),
             ("bitwise_and.Scalar_Tensor", bitwise_and_scalar_tensor),
             ("bitwise_and.Tensor", bitwise_and_tensor),
@@ -93,9 +95,12 @@ def enable(
             ("clamp_.Tensor", clamp_tensor_),
             ("clamp_min_", clamp_min_),
             ("constant_pad_nd", constant_pad_nd),
-            ("contiguous", contiguous),
+            # ("contiguous", contiguous),
+            ("copy_", copy_),
             ("cos", cos),
             ("cos_", cos_),
+            ("tan", tan),
+            ("tan_", tan_),
             ("count_nonzero", count_nonzero),
             ("cummax", cummax),
             ("cummin", cummin),
@@ -132,6 +137,7 @@ def enable(
             ("erf_", erf_),
             ("exp", exp),
             ("exp_", exp_),
+            ("exp.out", exp_out),
             ("exp2", exp2),
             ("exp2_", exp2_),
             ("exponential_", exponential_),
@@ -303,7 +309,6 @@ def enable(
             ("threshold", threshold),
             ("threshold_backward", threshold_backward),
             ("tile", tile),
-            ("to.dtype", to_dtype),
             ("topk", topk),
             ("trace", trace),
             ("triu", triu),
@@ -352,6 +357,8 @@ class use_gems:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         global current_work_registrar
+        if torch.__version__ >= "2.5":
+            self.lib._destroy()
         del self.lib
         del self.unused
         del self.registrar

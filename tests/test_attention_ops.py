@@ -1,4 +1,5 @@
 import math
+import os
 import random
 from typing import List, Optional, Tuple
 
@@ -289,7 +290,6 @@ def gems_flash_fwd(
     return out, lse, seed, offset, debug_softmax
 
 
-@pytest.mark.skipif(flag_gems.vendor_name == "metax", reason="TODOFIX")
 @pytest.mark.skipif(flag_gems.vendor_name == "hygon", reason="RuntimeError")
 @pytest.mark.skipif(flag_gems.vendor_name == "kunlunxin", reason="RESULT TODOFIX")
 @pytest.mark.skipif(
@@ -466,7 +466,6 @@ def test_sdpa_legacy_backward(
     gems_assert_close(gems_v_grad, torch_v_grad, dtype, equal_nan=True)
 
 
-@pytest.mark.skipif(flag_gems.vendor_name == "metax", reason="TODOFIX")
 @pytest.mark.skipif(flag_gems.vendor_name == "hygon", reason="RuntimeError")
 @pytest.mark.skipif(flag_gems.vendor_name == "kunlunxin", reason="RESULT TODOFIX")
 @pytest.mark.scaled_dot_product_attention
@@ -482,6 +481,9 @@ def test_sdpa_legacy_backward(
 def test_sdpa_square_qk_even_mn(
     batch, num_head, q_seq_len, kv_seq_len, head_size, is_causal, dtype
 ):
+    if flag_gems.vendor_name == "mthreads":
+        os.environ["MUSA_ENABLE_SQMMA"] = "1"
+
     device = torch_device_fn.current_device()
     q, k, v = make_input(
         batch, num_head, num_head, q_seq_len, kv_seq_len, head_size, dtype, device
@@ -495,8 +497,10 @@ def test_sdpa_square_qk_even_mn(
         gems_result = torch_sdpa(q, k, v, scale, is_causal)
     gems_assert_close(gems_result, torch_result, dtype)
 
+    if flag_gems.vendor_name == "mthreads":
+        del os.environ["MUSA_ENABLE_SQMMA"]
 
-@pytest.mark.skipif(flag_gems.vendor_name == "metax", reason="TODOFIX")
+
 @pytest.mark.skipif(flag_gems.vendor_name == "hygon", reason="RuntimeError")
 @pytest.mark.skipif(flag_gems.vendor_name == "kunlunxin", reason="RESULT TODOFIX")
 @pytest.mark.scaled_dot_product_attention
@@ -510,6 +514,9 @@ def test_sdpa_square_qk_even_mn(
 def test_sdpa_nonsquare_qk(
     batch, num_head, q_seq_len, kv_seq_len, head_size, is_causal, dtype
 ):
+    if flag_gems.vendor_name == "mthreads":
+        os.environ["MUSA_ENABLE_SQMMA"] = "1"
+
     device = torch_device_fn.current_device()
     q, k, v = make_input(
         batch, num_head, num_head, q_seq_len, kv_seq_len, head_size, dtype, device
@@ -522,6 +529,9 @@ def test_sdpa_nonsquare_qk(
     with flag_gems.use_gems():
         gems_result = torch_sdpa(q, k, v, scale, is_causal)
     gems_assert_close(gems_result, torch_result, dtype)
+
+    if flag_gems.vendor_name == "mthreads":
+        del os.environ["MUSA_ENABLE_SQMMA"]
 
 
 @pytest.mark.skipif(flag_gems.vendor_name == "metax", reason="TODOFIX")
@@ -868,7 +878,6 @@ def ref_paged_attn(
     return torch.cat(outputs, dim=0)
 
 
-@pytest.mark.skipif(flag_gems.vendor_name == "mthreads", reason="RESULT TODOFIX")
 @pytest.mark.skipif(flag_gems.vendor_name == "kunlunxin", reason="RESULT TODOFIX")
 @pytest.mark.skipif(flag_gems.vendor_name == "hygon", reason="RESULT TODOFIX")
 @pytest.mark.flash_attn_varlen_func
@@ -893,6 +902,9 @@ def test_flash_attn_varlen_func(
     soft_cap: Optional[float],
     num_blocks: int,
 ) -> None:
+    if flag_gems.vendor_name == "mthreads":
+        os.environ["MUSA_ENABLE_SQMMA"] = "1"
+
     # (Issue) numerical stability concern
     if alibi is True and soft_cap is not None:
         return
@@ -976,8 +988,10 @@ def test_flash_attn_varlen_func(
             output, ref_output, atol=2e-2, rtol=1e-2
         ), f"{torch.max(torch.abs(output - ref_output))}"
 
+    if flag_gems.vendor_name == "mthreads":
+        del os.environ["MUSA_ENABLE_SQMMA"]
 
-@pytest.mark.skipif(flag_gems.vendor_name == "mthreads", reason="RESULT TODOFIX")
+
 @pytest.mark.skipif(flag_gems.vendor_name == "kunlunxin", reason="RESULT TODOFIX")
 @pytest.mark.skipif(flag_gems.vendor_name == "hygon", reason="RESULT TODOFIX")
 @pytest.mark.flash_attn_varlen_func
@@ -1000,6 +1014,9 @@ def test_flash_attn_varlen_func_swap_qg(
     soft_cap: Optional[float],
     num_blocks: int,
 ) -> None:
+    if flag_gems.vendor_name == "mthreads":
+        os.environ["MUSA_ENABLE_SQMMA"] = "1"
+
     with torch.device(flag_gems.device):
         init_seed(1234567890)
         num_seqs = len(seq_lens)
@@ -1060,6 +1077,9 @@ def test_flash_attn_varlen_func_swap_qg(
         torch.testing.assert_close(
             output, ref_output, atol=2e-2, rtol=1e-2
         ), f"{torch.max(torch.abs(output - ref_output))}"
+
+    if flag_gems.vendor_name == "mthreads":
+        del os.environ["MUSA_ENABLE_SQMMA"]
 
 
 DTYPES = [torch.half, torch.bfloat16, torch.float]
@@ -1447,9 +1467,7 @@ def test_reshape_and_cache_flash(
         torch.testing.assert_close(value_cache.cpu(), cloned_value_cache.cpu())
 
 
-@pytest.mark.skipif(flag_gems.vendor_name == "metax", reason="TODOFIX")
 @pytest.mark.skipif(flag_gems.vendor_name == "hygon", reason="RuntimeError")
-@pytest.mark.skipif(flag_gems.vendor_name == "mthreads", reason="RESULT TODOFIX")
 @pytest.mark.skipif(flag_gems.vendor_name == "kunlunxin", reason="RESULT TODOFIX")
 @pytest.mark.skipif(flag_gems.vendor_name == "cambricon", reason="TypeError")
 @pytest.mark.flash_mla
@@ -1461,6 +1479,9 @@ def test_reshape_and_cache_flash(
     ],
 )
 def test_flash_mla(seqlen, dtype):
+    if flag_gems.vendor_name == "mthreads":
+        os.environ["MUSA_ENABLE_SQMMA"] = "1"
+
     b = 128
     s_q = 1
     h_q = 128
@@ -1585,6 +1606,9 @@ def test_flash_mla(seqlen, dtype):
         assert cos_diff < 1e-5, f"{name}: {cos_diff=}, {RMSE=}, {amax_diff=}"
 
     cal_diff(to_reference(res_out), ref_out, "out")
+
+    if flag_gems.vendor_name == "mthreads":
+        del os.environ["MUSA_ENABLE_SQMMA"]
 
 
 @pytest.mark.get_scheduler_metadata

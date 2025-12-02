@@ -357,7 +357,6 @@ def test_accuracy_resolve_conj(shape, dtype):
     assert not z.is_conj()
 
 
-@pytest.mark.skipif(flag_gems.vendor_name == "mthreads", reason="AssertionError")
 @pytest.mark.skipif(flag_gems.vendor_name == "hygon", reason="AssertionError")
 @pytest.mark.unique
 @pytest.mark.parametrize("shape", SPECIAL_SHAPES)
@@ -655,6 +654,9 @@ def test_linspace(start, end, steps, dtype, device, pin_memory):
 @pytest.mark.parametrize("device", [device])
 @pytest.mark.parametrize("pin_memory", [False])
 def test_logspace(start, end, steps, base, dtype, device, pin_memory):
+    if flag_gems.vendor_name == "kunlunxin" and dtype is torch.half:
+        pytest.skip("wait lerp cpu half impl")
+
     ref_out = torch.logspace(
         start,
         end,
@@ -1161,7 +1163,6 @@ def test_accuracy_diagonal_backward(shape, dtype, dim1, dim2, offset):
 
 
 @pytest.mark.skipif(flag_gems.vendor_name == "hygon", reason="RESULT TODOFIX")
-@pytest.mark.skipif(flag_gems.vendor_name == "kunlunxin", reason="RESULT TODOFIX")
 @pytest.mark.sort
 @pytest.mark.parametrize("batch_size", [4, 8])
 @pytest.mark.parametrize(
@@ -1297,6 +1298,15 @@ def test_accuracy_rwkv_mmsparsity(dtype):
 
     k = torch.randn(n, dtype=dtype, device=flag_gems.device)
     k = torch.relu(k)
+    if flag_gems.vendor_name == "kunlunxin":
+        # kunlunxin sparsity test require 90% sparsity
+        sparsity_levels = [0.9]
+        for target_sparsity in sparsity_levels:
+            threshold = torch.quantile(k.abs().to(torch.float32), target_sparsity).to(
+                dtype
+            )
+            k = torch.relu(k - threshold)
+
     V_ = torch.randn(n, embedding_dim, dtype=dtype, device=flag_gems.device)
 
     with flag_gems.use_gems():
