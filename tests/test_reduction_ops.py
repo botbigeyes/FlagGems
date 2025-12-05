@@ -1409,7 +1409,48 @@ INDEX_ACC_SHAPE = (
 )
 
 
-def gen_indices_bool(input_shape, indices_shape, accumulate, is_bool):
+def gen_indices(input_shape, indices_shape, accumulate):
+    """
+    Generate indices for torch.ops.aten.index.
+    All index tensors must be broadcastable, so we ensure they have compatible shapes.
+    """
+    indices = []
+    # For torch.ops.aten.index, all index tensors must be broadcastable
+    # So we use the same shape for all indices
+    if len(indices_shape) > 0:
+        # Find the minimum size across all indices to ensure broadcastability
+        sizes = []
+        for shape in indices_shape:
+            if isinstance(shape, int):
+                sizes.append(shape)
+            elif isinstance(shape, (tuple, list)) and len(shape) > 0:
+                sizes.append(shape[0])
+            else:
+                sizes.append(16)  # default
+        common_size = min(sizes) if sizes else 16
+
+        for i, shape in enumerate(indices_shape):
+            if isinstance(shape, int):
+                size = min(shape, common_size)
+            elif isinstance(shape, (tuple, list)) and len(shape) > 0:
+                size = min(shape[0], common_size)
+            else:
+                size = common_size
+            index = np.random.choice(
+                np.arange(input_shape[i]), size=size, replace=accumulate
+            )
+            indices.append(torch.tensor(index, device=flag_gems.device))
+    return indices
+
+
+def gen_indices_for_index_put(input_shape, indices_shape, accumulate, is_bool):
+    """
+    Generate indices for torch.index_put.
+    This function supports multi-dimensional integer index shapes (e.g., (2, 8))
+    when is_bool is False, and generates a single boolean mask tensor when
+    is_bool is True. This is unlike gen_indices which is designed for
+    torch.ops.aten.index that requires broadcastable indices.
+    """
     indices = []
 
     if is_bool:
@@ -1422,6 +1463,7 @@ def gen_indices_bool(input_shape, indices_shape, accumulate, is_bool):
 
     else:
         for i, shape in enumerate(indices_shape):
+            # np.random.choice can accept tuple as size parameter
             index = np.random.choice(
                 np.arange(input_shape[i]), size=shape, replace=accumulate
             )
@@ -1440,7 +1482,7 @@ def test_index_put_acc_false(input_shape, indices_shape, values_shape, is_bool, 
         input_shape, dtype=dtype, device=flag_gems.device, requires_grad=False
     )
 
-    indices = gen_indices_bool(input_shape, indices_shape, accumulate, is_bool)
+    indices = gen_indices_for_index_put(input_shape, indices_shape, accumulate, is_bool)
 
     if is_bool:
         K = indices[0].sum().item()
@@ -1484,7 +1526,7 @@ def test_index_put_acc_true(input_shape, indices_shape, values_shape, is_bool, d
         input_shape, dtype=dtype, device=flag_gems.device, requires_grad=False
     )
 
-    indices = gen_indices_bool(input_shape, indices_shape, accumulate, is_bool)
+    indices = gen_indices_for_index_put(input_shape, indices_shape, accumulate, is_bool)
 
     if is_bool:
         K = indices[0].sum().item()
@@ -1515,7 +1557,7 @@ def test_index_put__acc_false(input_shape, indices_shape, values_shape, is_bool,
         input_shape, dtype=dtype, device=flag_gems.device, requires_grad=False
     )
 
-    indices = gen_indices_bool(input_shape, indices_shape, accumulate, is_bool)
+    indices = gen_indices_for_index_put(input_shape, indices_shape, accumulate, is_bool)
 
     if is_bool:
         K = indices[0].sum().item()
@@ -1559,7 +1601,7 @@ def test_index_put__acc_true(input_shape, indices_shape, values_shape, is_bool, 
         input_shape, dtype=dtype, device=flag_gems.device, requires_grad=False
     )
 
-    indices = gen_indices_bool(input_shape, indices_shape, accumulate, is_bool)
+    indices = gen_indices_for_index_put(input_shape, indices_shape, accumulate, is_bool)
 
     if is_bool:
         K = indices[0].sum().item()
@@ -1613,16 +1655,6 @@ def test_index_put__error_all_none(dtype):
         ValueError, match="At least one non-None index tensor is required"
     ):
         flag_gems.index_put_(inp, indices, values, accumulate=False)
-
-
-def gen_indices(input_shape, indices_shape, accumulate):
-    indices = []
-    for i, shape in enumerate(indices_shape):
-        index = np.random.choice(
-            np.arange(input_shape[i]), size=shape, replace=accumulate
-        )
-        indices.append(torch.tensor(index, device=flag_gems.device))
-    return indices
 
 
 @pytest.mark.index
