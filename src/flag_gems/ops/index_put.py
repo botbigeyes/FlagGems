@@ -38,7 +38,7 @@ def generate_imports(code: IndentedBuffer) -> IndentedBuffer:
     code.writeline("import triton")
     code.writeline("import triton.language as tl")
     code.newline()
-    code.writeline("from flag_gems.utils import libentry, libtuner")
+    code.writeline("from flag_gems.utils import libentry")
     code.writeline("from flag_gems import runtime")
     code.writeline("from flag_gems.utils.shape_utils import volume")
     code.writeline("from flag_gems.utils import triton_lang_extension as tle")
@@ -52,15 +52,6 @@ def generate_index_put_kernel(
     inp_rank, indices_len, index_rank, kernel_name: str, code: IndentedBuffer
 ):
     code.writeline("@libentry()")
-    code.writeline("@libtuner(")
-    with code.indent():
-        code.writeline(
-            "configs=[triton.Config({'BLOCK_SIZE0': 2, 'BLOCK_SIZE1': 2048}, num_warps=4)],"
-        )
-        code.writeline('key=["M", "N"],')
-        code.writeline("warmup=1,")
-        code.writeline("rep=1,")
-    code.writeline(")")
     code.writeline("@triton.jit")
     code.writeline(f"def {kernel_name}(")
     with code.indent():
@@ -80,8 +71,8 @@ def generate_index_put_kernel(
             "M,",
             "N,",
             "IS_ACCUMULATE: tl.constexpr,",
-            "BLOCK_SIZE0: tl.constexpr,",
-            "BLOCK_SIZE1: tl.constexpr,",
+            "BLOCK_SIZE0: tl.constexpr = 2,",
+            "BLOCK_SIZE1: tl.constexpr = 2048,",
         ]
         code.writelines(args)
     code.writeline("):")
