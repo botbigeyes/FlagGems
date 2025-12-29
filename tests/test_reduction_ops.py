@@ -2003,7 +2003,7 @@ def test_accuracy_masked_scatter(shape, dtype, threshold):
     gems_assert_equal(res_out, ref_out)
 
 
-@pytest.mark.masked_scatter
+@pytest.mark.masked_scatter_
 @pytest.mark.parametrize("threshold, shape", THRESHOLD_SHAPE)
 @pytest.mark.parametrize("dtype", FLOAT_DTYPES)
 def test_accuracy_masked_scatter_(shape, dtype, threshold):
